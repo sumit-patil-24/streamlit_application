@@ -1,0 +1,46 @@
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+    
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/sumit-patil-24/Petclinic.git'
+            }
+        }
+        
+        stage('build') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+        
+        stage('Sonarqube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-token') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Petclinic \
+                    -Dsonar.java.binaries=. \
+                    -Dsonar.projectKey=Petclinic '''
+                }
+            }
+        }
+        stage('docker build & push'){
+            steps {
+                script{
+                withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                    sh 'docker build -t sumit202/petclinic:v1 .'
+                    sh 'docker puch sumit202/petclinic:v1'
+                }
+                }
+            }
+        }
+    }
+}
